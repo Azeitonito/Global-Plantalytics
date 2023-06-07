@@ -1,0 +1,122 @@
+#include<LiquidCrystal.h>
+
+//potenciometro_PH = A5;
+//potenciometro_Umidade = A4;
+//potenciometro_Condutividade = A3;
+//potenciometro_Temperatura = A2;
+LiquidCrystal lcd(9, 10, 4, 5, 6, 7);
+int Contrast = 0;
+
+int trocar_tela_btn = 3;
+int estado_btn = 0;
+int contador_estado = 0;
+
+float Vin=5; // Voltagem Inicial
+float Vout=0; // Valor de entrada da voltagem
+float Rref=500; // Valor do resistor de referência em kohm
+
+void setup()
+{
+  Serial.begin(9600);
+  
+  analogWrite (8,Contrast);
+  lcd.begin(16,2);
+  
+  pinMode(A5, INPUT);
+  pinMode(A4, INPUT);
+  pinMode(A3, INPUT);
+  pinMode(A2, INPUT);
+  
+  pinMode(trocar_tela_btn, INPUT);
+  digitalWrite (trocar_tela_btn, HIGH);
+}
+
+void loop()
+{
+  estado_btn = digitalRead(trocar_tela_btn); 
+  if (estado_btn == LOW){
+    contador_estado += 1;
+    if (contador_estado > 3){
+      contador_estado = 0;
+    }
+    Serial.print(" Tela =");   
+	Serial.println(contador_estado);
+    _checar_tela();
+    delay(200);
+  }
+  _checar_tela();
+}
+
+void _checar_tela (){
+  if (contador_estado == 0){
+    _ph();
+  }else if (contador_estado == 1){ 
+    _umidade();
+  }else if (contador_estado == 2){
+    _condutividade();
+  }else if (contador_estado == 3){
+    _temperatura();
+  }
+  else {
+   _reset_lcd(); 
+  }
+}
+
+void _reset_lcd (){
+ lcd.setCursor(0,0);
+ lcd.print ("                        ");
+ lcd.setCursor(0,1);
+ lcd.print ("                        ");
+}
+
+void _ph (){
+  float sensorValue = analogRead(A5);
+  float ph = sensorValue * (14.0/1023.0);
+  lcd.setCursor(0,0);
+  lcd.print("PH do Solo:             ");
+  lcd.setCursor(0,1);
+  lcd.print(String(ph)+ "                  ");
+}
+void _umidade(){
+  float humiditysensorOutput = analogRead(A4);
+  float umidade = map(humiditysensorOutput, 0, 1023, 10, 0);
+  lcd.setCursor(0,0);
+  lcd.print("Umidade do Solo:             ");
+  if(umidade <= 2){
+  	lcd.setCursor(0,1);
+    lcd.print("Muito seco                  "); 
+  } else if(umidade <= 4){
+    lcd.setCursor(0,1);
+    lcd.print("Seco                        "); 
+  }else if(umidade >= 8){
+    lcd.setCursor(0,1);
+    lcd.print("Muito umido                 "); 
+  } else if(umidade >= 6){
+    lcd.setCursor(0,1);
+    lcd.print("Umido                       "); 
+  }else {
+    lcd.setCursor(0,1);
+    lcd.print("Boa                         "); 
+  }
+   
+}
+void _condutividade(){
+  float VoltagemSensor=analogRead(A3);
+  float Vout= (Vin*VoltagemSensor)/1023; // faz a conversão do valor
+  float Rx= Rref * (1 / ((Vin/Vout)-1)); // calcula a resistencia variável
+  float Resis= Rx*5; // calcula a resistividade
+  float Cond= (1/Resis)*1000; //Condutividade eletrica do solo em micro siemens por centimetros
+  lcd.setCursor(0,0);
+  lcd.print("Cond. do Solo:             ");
+  lcd.setCursor(0,1);
+  lcd.print(String(Cond)+ " microS/cm                ");  
+}
+void _temperatura(){
+  float RawValue = analogRead(A2);
+  float Voltage = (RawValue / 1023.0) * 5000;
+  float tempC = (Voltage-500) * 0.1;
+  lcd.setCursor(0,0);
+  lcd.print("Temp. do Solo:           ");
+  lcd.setCursor(0,1);
+  lcd.print(String(tempC)+ "C                  ");
+}
